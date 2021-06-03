@@ -1,5 +1,7 @@
 #include "TxLib.h"
+
 void Ball_Move();
+//--------------------------------------------------------------
 int main()
 {
  txCreateWindow (800, 600);
@@ -7,13 +9,16 @@ int main()
 
  return(0);
 }
+//--------------------------------------------------------------
 void Ball_Move()
 {
 
  int x  = 100;
  int y  = 0;
- int vx = 5;
- int vy = 3;
+ int vx = 7;
+ int vy = 5;
+ int ax = 1;
+ int ay = 0;
  int dt = 1;
  int t  = 0;
 
@@ -24,6 +29,9 @@ void Ball_Move()
     txSetFillColor (RGB (t/2, t/2, 128));
 
     txCircle (x, y, 20);
+
+    vx += ax * dt;
+    vy += ay * dt;
 
     x += vx * dt;
     y += vy * dt;
@@ -57,16 +65,14 @@ void Ball_Move()
 
 
     if(txGetAsyncKeyState (VK_RIGHT)) vx++;
-
     if(txGetAsyncKeyState (VK_LEFT))  vx--;
-
     if(txGetAsyncKeyState (VK_UP))    vy++;
-
     if(txGetAsyncKeyState (VK_DOWN))  vy--;
+    if(txGetAsyncKeyState (VK_SPACE)) {vx = 0; vy = 0;}
 
 
     txSleep (100);
 
-
  }
+
 }
