@@ -127,6 +127,7 @@ void Balls_Game()
         printf("CRASH = %d\r", count);
 
 
+
         txSleep (100);
 
         t += dt;
@@ -209,33 +210,30 @@ void Average_Velosity(balls *ball, int t)
     int i   = 0;
 
     if (t < 5)
-        {
-             ball->vx_sr = ball->vx;
-             ball->vy_sr = ball->vy;
-        }
+    {
+        ball->vx_sr = ball->vx;
+        ball->vy_sr = ball->vy;
+    }
+
+    if (ball->average_count == 5)
+        ball->average_count=0;
 
     ball->vectorVx[ball->average_count] = ball->vx;
     ball->vectorVy[ball->average_count] = ball->vy;
 
-    if (ball->average_count == 4)
+    svx = 0;
+    svy = 0;
+
+    for (i = 0; i < 5; i++)
     {
-        svx = 0;
-        svy = 0;
 
-        for (i = 0; i < 5; i++)
-        {
-
-            svx += ball->vectorVx[i];
-            svy += ball->vectorVy[i];
-
-        }
-
-        ball->vx_sr = (int)(svx/5);
-        ball->vy_sr = (int)(svy/5);
-
-        ball->average_count = 0;
+        svx += ball->vectorVx[i];
+        svy += ball->vectorVy[i];
 
     }
+
+    ball->vx_sr = (int)(svx/5);
+    ball->vy_sr = (int)(svy/5);
 
     (ball->average_count)++;
 
@@ -256,3 +254,4 @@ bool Is_Crash (balls ball1, balls ball2, int eps)
 
 }
 //-----------------------------------------------------
+
