@@ -27,6 +27,7 @@ struct controls
 
 struct cues
 {
+    int number;
     int x1;
     int y1;
     int x2;
@@ -46,18 +47,23 @@ struct scores
     int player2;
 };
 
+
+
+
+
 void Came_Billard();
 void Draw_Landscape(void);
 void Draw_Cue(cues cue, int t);
-void Control_Cue(cues *cue);
+void Move_Cue(cues *cue);
+void Control_Cue(cues *cue, balls *ball);
 void Draw_Ball(balls ball);
-void Control_ball(balls *ball, scores *score);
+void Control_ball(balls *ball);
 void Physics_Ball(balls *ball, int dt);
-bool Is_Cue_Hit (cues cue, balls ball, int eps);
+bool Is_Cue_Hit (cues *cue, balls *ball, int eps);
 bool IsLine(int x1, int y1, int x2, int y2, int x3, int y3);
-void Cue_Hit(balls *ball, cues cue);
-void Cue_Init(cues *cue, int x1, int y1, double length, int angle, COLORREF border_color, int key_right, int key_left, int key_up, int key_down, int key_turn_right, int key_turn_left, bool active);
-void Ball_Init(balls *ball, double vx, double vy, int r, COLORREF border_color, COLORREF fill_color);
+void Cue_Hit(balls *ball, cues *cue);
+void Cue_Init(cues *cue, int number, bool active);
+void Ball_Init(balls *ball, double vx, double vy, int r, COLORREF border_color, COLORREF fill_color, bool active);
 void Ball_Delete (balls *ball);
 void Draw_Score(scores score);
 //-----------------------------------------------------
@@ -79,14 +85,14 @@ void Came_Billard()
     cues  cue2;
     scores score;
 
-    Cue_Init (&cue1,  0, 0, 200, 30,       TX_YELLOW, VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN, VK_NUMPAD6, VK_NUMPAD4, true);
-    Cue_Init (&cue2,  1000, 0, 200, 150,       TX_WHITE, VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN, VK_NUMPAD6, VK_NUMPAD4, false);
-    Ball_Init(&ball1, 0, 0, 20,  TX_WHITE, TX_WHITE);
+    Cue_Init (&cue1, 1, true);
+    Cue_Init (&cue2, 2, false);
 
-
+    Ball_Init(&ball1, 0, 0, 20,  TX_WHITE, TX_WHITE, true);
 
     int dt = 1;
     int t  = 0;
+    int last_active_cue;
 
     score.player1 = 0;
     score.player2 = 0;
@@ -99,31 +105,21 @@ void Came_Billard()
         txClear();
 
         Draw_Score(score);
+
         Draw_Landscape();
-        Control_ball(&ball1, &score);
+
         Draw_Ball   (ball1);
+        Control_ball(&ball1);
+
         Draw_Cue    (cue1, t);
-        Control_Cue (&cue1);
+        Control_Cue (&cue1, &ball1);
+        Move_Cue    (&cue1);
+
+
         Draw_Cue    (cue2, t);
-        Control_Cue (&cue2);
+        Control_Cue (&cue2, &ball1);
+        Move_Cue    (&cue2);
 
-        if (Is_Cue_Hit(cue1, ball1, 10))
-         {
-            Cue_Hit  (&ball1, cue1);
-            Cue_Init (&cue1,  0, 0, 200, 30, TX_YELLOW, VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN, VK_NUMPAD6, VK_NUMPAD4, false);
-            Cue_Init (&cue2,  1000, 0, 200, 150, TX_WHITE, VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN, VK_NUMPAD6, VK_NUMPAD4, true);
-         }
-
-         if (Is_Cue_Hit(cue2, ball1, 10))
-         {
-            Cue_Hit  (&ball1, cue2);
-            Cue_Init (&cue1,  0, 0, 200, 30, TX_YELLOW, VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN, VK_NUMPAD6, VK_NUMPAD4, true);
-            Cue_Init (&cue2,  1000, 0, 200, 150, TX_WHITE, VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN, VK_NUMPAD6, VK_NUMPAD4, false);
-         }
-         
-         
-         
-        
 
         Physics_Ball(&ball1, dt);
         t += dt;
@@ -176,18 +172,21 @@ void Draw_Landscape(void)
 
 }
 //-----------------------------------------------------
-void Control_ball(balls *ball, scores *score)
+void Control_ball(balls *ball)
 {
     if (txGetAsyncKeyState (VK_F1))
-        Ball_Init(ball, 0,   0,   20,  TX_WHITE, TX_WHITE);
+        Ball_Init(ball, 0,   0,   20,  TX_WHITE, TX_WHITE, true);
 
-    if  (((ball->x >= 150 && ball->x <= 180)||(ball->x >= 500 && ball->x <= 530)||(ball->x >= 850 && ball->x <= 880))&&((ball->y >= 150 && ball->y <= 180)||(ball->y >= 650 && ball->y <= 680)))
-    
-       ball->active = false;
+  //  if  (((ball->x >= 150 && ball->x <= 180)||(ball->x >= 500 && ball->x <= 530)||(ball->x >= 850 && ball->x <= 880))&&((ball->y >= 150 && ball->y <= 180)||(ball->y >= 650 && ball->y <= 680)))
+
+    if (txGetPixel(ball->x, ball->y) == TX_BLACK)
+        ball->active = false;
+
+
 
 }
         //-----------------------------------------------------
-void Control_Cue(cues *cue)
+void Move_Cue(cues *cue)
 {
     if (cue->active)
     {
@@ -201,6 +200,29 @@ void Control_Cue(cues *cue)
 
         cue->x2 = cue->x1 + (int)(cue->length * cos(cue->angle * pi / 180));
         cue->y2 = cue->y1 + (int)(cue->length * sin(cue->angle * pi / 180));
+
+
+    }
+
+}
+//-----------------------------------------------------
+void Control_Cue(cues *cue, balls *ball)
+{
+    int num = cue->number;
+    bool active = cue->active;
+
+   if (cue->active)
+   {
+        if (Is_Cue_Hit(cue, ball, 10))
+            {
+                Cue_Hit  (ball, cue);
+                Cue_Init (cue, num, !active);
+            }
+
+    }
+    else
+    {
+        Cue_Init (cue, num, active);
     }
 
 }
@@ -263,14 +285,14 @@ void Physics_Ball(balls *ball, int dt)
 
 }
 //-----------------------------------------------------
-bool Is_Cue_Hit (cues cue, balls ball, int eps)
+bool Is_Cue_Hit (cues *cue, balls *ball, int eps)
 {
 
     bool hit = false;
 
-    int distance = (int)sqrt((ball.x - cue.x2) * (ball.x - cue.x2) + (ball.y - cue.y2) * (ball.y - cue.y2)) - ball.r;
+    int distance = (int)sqrt((ball->x - cue->x2) * (ball->x - cue->x2) + (ball->y - cue->y2) * (ball->y - cue->y2)) - ball->r;
 
-    if ((distance <= eps) && IsLine(cue.x1, cue.y1, cue.x2, cue.y2, ball.x, ball.y))
+    if ((distance <= eps) && IsLine(cue->x1, cue->y1, cue->x2, cue->y2, ball->x, ball->y))
         hit = true;
 
     return hit;
@@ -287,43 +309,71 @@ bool IsLine(int x1, int y1, int x2, int y2, int x3, int y3)
 
 }
 //-----------------------------------------------------
-void Cue_Hit(balls *ball, cues cue)
+void Cue_Hit(balls *ball, cues *cue)
 {
-  ball->vx = (float)(cue.x2 - cue.x1);//sqrt((cue.x1 - cue.x2) * (cue.x1 - cue.x2) + (cue.y1 - cue.y2) * (cue.y1 - cue.y2));
-  ball->vy = (float)(cue.y2 - cue.y1);//sqrt((cue.x1 - cue.x2) * (cue.x1 - cue.x2) + (cue.y1 - cue.y2) * (cue.y1 - cue.y2));
+  ball->vx = (float)(cue->x2 - cue->x1);//sqrt((cue.x1 - cue.x2) * (cue.x1 - cue.x2) + (cue.y1 - cue.y2) * (cue.y1 - cue.y2));
+  ball->vy = (float)(cue->y2 - cue->y1);//sqrt((cue.x1 - cue.x2) * (cue.x1 - cue.x2) + (cue.y1 - cue.y2) * (cue.y1 - cue.y2));
 
 }
 //-----------------------------------------------------
-void Cue_Init(cues *cue, int x1, int y1, double length, int angle, COLORREF border_color, int key_right, int key_left, int key_up, int key_down, int key_turn_right, int key_turn_left, bool active)
+void Cue_Init(cues *cue, int number, bool active)
 {
 
-    cue->x1     = x1;
-    cue->y1     = y1;
-    cue->length = length;
-    cue->angle  = angle;
-    cue->border_color           = border_color;
-    cue->control.key_right      = key_right;
-    cue->control.key_left       = key_left;
-    cue->control.key_up         = key_up;
-    cue->control.key_down       = key_down;
-    cue->control.key_turn_right = key_turn_right;
-    cue->control.key_turn_left  = key_turn_left;
-    cue->active                 = active;
+    cue->number = number;
+
+    switch (cue->number)
+    {
+        case 1:
+        {
+          cue->x1     = 0;
+          cue->y1     = 0;
+          cue->length = 200;
+          cue->angle  = 30;
+          cue->border_color = TX_YELLOW;
+          cue->control.key_right      = VK_RIGHT;
+          cue->control.key_left       = VK_LEFT;
+          cue->control.key_up         = VK_UP;
+          cue->control.key_down       = VK_DOWN;
+          cue->control.key_turn_right = VK_NUMPAD6;
+          cue->control.key_turn_left  = VK_NUMPAD4;
+          cue->active = active;
+          break;
+        }
+
+        case 2:
+        {
+          cue->x1     = 1000;
+          cue->y1     = 0;
+          cue->length = 200;
+          cue->angle  = 150;
+          cue->border_color = TX_WHITE;
+          cue->control.key_right      = VK_RIGHT;
+          cue->control.key_left       = VK_LEFT;
+          cue->control.key_up         = VK_UP;
+          cue->control.key_down       = VK_DOWN;
+          cue->control.key_turn_right = VK_NUMPAD6;
+          cue->control.key_turn_left  = VK_NUMPAD4;
+          cue->active = active;
+          break;
+        }
+    }
+
     cue->x2 = cue->x1 + (int)(cue->length * cos(cue->angle * pi / 180));
     cue->y2 = cue->y1 + (int)(cue->length * sin(cue->angle * pi / 180));
 
 }
 //-----------------------------------------------------
-void Ball_Init (balls *ball, double vx, double vy, int r, COLORREF border_color, COLORREF fill_color)
+void Ball_Init (balls *ball, double vx, double vy, int r, COLORREF border_color, COLORREF fill_color, bool active)
 {
 
-    ball->x  = rand() % 601 + 200;
-    ball->y  = rand() % 601 + 200;
+    ball->x  = random (150, 850);
+    ball->y  = random (150, 650);
     ball->vx = vx;
     ball->vy = vy;
     ball->r  = r;
     ball->border_color = border_color;
     ball->fill_color   = fill_color;
+    ball->active       = active;
 
 }
 //-----------------------------------------------------
@@ -337,7 +387,7 @@ void Ball_Delete (balls *ball)
 
    while (ball->r >= 0)
    {
-        ball->r -= 2;
+        ball->r -= 1;
         Draw_Ball(*ball);
         txSleep (100);
    }
@@ -360,8 +410,6 @@ void Draw_Score(scores score)
 
 }
 //-----------------------------------------------------
-void Control_Score(scores *score, )
-{
-    
-}
+
+
 
