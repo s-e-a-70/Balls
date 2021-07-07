@@ -1,4 +1,3 @@
-#define pi 3.14
 #include "TxLib.h"
 #include <math.h>
 
@@ -57,7 +56,7 @@ void Draw_Cue(cues cue, int t);
 void Move_Cue(cues *cue);
 void Control_Cue(cues *cue, balls *ball);
 void Draw_Ball(balls ball);
-void Control_Ball(balls *ball, bool *cue_change);
+void Control_Ball(balls *ball);
 void Physics_Ball(balls *ball, int dt);
 bool IsLine(int x1, int y1, int x2, int y2, int x3, int y3);
 void Cue_Hit(balls *ball, cues *cue);bool Is_Cue_Hit (cues *cue, balls *ball, int eps);
@@ -66,7 +65,8 @@ void Cue_Init(cues *cue, int number, bool active);
 void Ball_Init(balls *ball, double vx, double vy, int r, COLORREF border_color, COLORREF fill_color, bool active);
 void Ball_Delete (balls *ball);
 void Draw_Score(scores score);
-void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change, int *last_active_cue);
+void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change);
+void Cue_Change(cues *cue1, cues *cue2);
 
 //-----------------------------------------------------
 int main()
@@ -94,7 +94,6 @@ void Came_Billard()
 
     int dt = 1;
     int t  = 0;
-    int last_active_cue = 0;
     bool cue_change = false;
 
     score.player1 = 0;
@@ -107,28 +106,35 @@ void Came_Billard()
 
         txClear();
 
-        Draw_Score(score);
+
 
         Draw_Landscape();
 
         Draw_Ball   (ball1);
-        Control_Ball(&ball1, &cue_change);
+        Control_Ball(&ball1);
+
 
         Draw_Cue    (cue1, t);
-        Control_Cue (&cue1, &ball1);
         Move_Cue    (&cue1);
+        Control_Cue (&cue1, &ball1);
+
+
 
 
         Draw_Cue    (cue2, t);
-        Control_Cue (&cue2, &ball1);
         Move_Cue    (&cue2);
+        Control_Cue (&cue2, &ball1);
+
+
 
 
         Physics_Ball(&ball1, dt);
 
-        Control_Game(&ball1, &cue1, &cue2, &score, &cue_change, &last_active_cue);
+        Control_Game(&ball1, &cue1, &cue2, &score, &cue_change);
 
         t += dt;
+
+         Draw_Score(score);
 
         txSleep (100);
 
@@ -158,6 +164,9 @@ void Draw_Cue(cues cue, int t)
 //-----------------------------------------------------
 void Draw_Landscape(void)
 {
+        txSetFillColor (TX_RED);
+        txSetColor     (TX_RED);
+        txRectangle    (0, 0, 1000, 800);
 
         txSetFillColor (RGB (94, 47, 0));
         txSetColor     (RGB (94, 47, 0), 3);
@@ -178,22 +187,10 @@ void Draw_Landscape(void)
 
 }
 //-----------------------------------------------------
-void Control_Ball(balls *ball, bool *cue_change)
+void Control_Ball(balls *ball)
 {
     if (txGetAsyncKeyState (VK_F1))
         Ball_Init(ball, 0,   0,   20,  TX_WHITE, TX_WHITE, true);
-
-  //  if  (((ball->x >= 150 && ball->x <= 180)||(ball->x >= 500 && ball->x <= 530)||(ball->x >= 850 && ball->x <= 880))&&((ball->y >= 150 && ball->y <= 180)||(ball->y >= 650 && ball->y <= 680)))
-
-    if (txGetPixel(ball->x, ball->y) == TX_BLACK)
-    {
-        ball->active = false;
-        *cue_change = true;
-    }
-
-    if  ((ball->vx == 0) && (ball->vy == 0))
-        *cue_change = true;
-
 
 
 }
@@ -223,15 +220,15 @@ void Control_Cue(cues *cue, balls *ball)
     int num = cue->number;
     bool active = cue->active;
 
-   if (cue->active)
+   if (cue->active == true)
    {
         if (Is_Cue_Hit(cue, ball, 10))
             {
                 Cue_Hit  (ball, cue);
-                Cue_Init (cue, num, !active);
+                Cue_Init (cue, num, active);
             }
 
-    }
+   }
     else
     {
         Cue_Init (cue, num, active);
@@ -246,8 +243,8 @@ void Draw_Ball(balls ball)
     txSetFillColor (ball.fill_color);
     txCircle       (ball.x, ball.y, ball.r);
 
-    txSetColor     (TX_BLACK);
-    txSetFillColor (TX_BLACK);
+    //txSetColor     (TX_BLACK);
+    //txSetFillColor (TX_BLACK);
 
 }
 //-----------------------------------------------------
@@ -323,8 +320,8 @@ bool IsLine(int x1, int y1, int x2, int y2, int x3, int y3)
 //-----------------------------------------------------
 void Cue_Hit(balls *ball, cues *cue)
 {
-  ball->vx = (float)(cue->x2 - cue->x1);//sqrt((cue.x1 - cue.x2) * (cue.x1 - cue.x2) + (cue.y1 - cue.y2) * (cue.y1 - cue.y2));
-  ball->vy = (float)(cue->y2 - cue->y1);//sqrt((cue.x1 - cue.x2) * (cue.x1 - cue.x2) + (cue.y1 - cue.y2) * (cue.y1 - cue.y2));
+  ball->vx = (float)(cue->x2 - cue->x1);//sqrt((cue->x1 - cue->x2) * (cue->x1 - cue->x2) + (cue->y1 - cue->y2) * (cue->y1 - cue->y2)) * 20;
+  ball->vy = (float)(cue->y2 - cue->y1);//sqrt((cue->x1 - cue->x2) * (cue->x1 - cue->x2) + (cue->y1 - cue->y2) * (cue->y1 - cue->y2)) * 20;
 
 }
 //-----------------------------------------------------
@@ -370,8 +367,8 @@ void Cue_Init(cues *cue, int number, bool active)
         }
     }
 
-    cue->x2 = cue->x1 + (int)(cue->length * cos(cue->angle * pi / 180));
-    cue->y2 = cue->y1 + (int)(cue->length * sin(cue->angle * pi / 180));
+    cue->x2 = cue->x1 + (int)(cue->length * cos(cue->angle * txPI / 180));
+    cue->y2 = cue->y1 + (int)(cue->length * sin(cue->angle * txPI / 180));
 
 }
 //-----------------------------------------------------
@@ -391,21 +388,22 @@ void Ball_Init (balls *ball, double vx, double vy, int r, COLORREF border_color,
 //-----------------------------------------------------
 void Ball_Delete (balls *ball)
 {
-    //ball->x  = 0;
-   // ball->y  = 0;
+   ball->x  = 0;
+   ball->y  = 0;
    ball->vx = 0;
    ball->vy = 0;
-    //ball->r  = 0;
+   ball->r  = 0;
+   ball->active = false;
 
-   while (ball->r >= 0)
-   {
-        ball->r -= 1;
-        Draw_Ball(*ball);
-        txSleep (100);
-   }
+  // while (ball->r >= 0)
+   //{
+   //     ball->r -= 1;
+   //     Draw_Ball(ball);
+   //     txSleep (100);
+   //}
 
-    ball->border_color = TX_BLACK;
-    ball->fill_color   = TX_BLACK;
+    //ball->border_color = TX_BLACK;
+    //ball->fill_color   = TX_BLACK;
 
 }
 //-----------------------------------------------------
@@ -422,25 +420,39 @@ void Draw_Score(scores score)
 
 }
 //-----------------------------------------------------
-void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change, int *last_active_cue)
+void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change)
 {
-  if (ball->active == 0)
-  {
-     Ball_Delete (ball);
-    *last_active_cue == 1? score->player1 ++ :score->player2 ++;
-    *last_active_cue = 0;
 
-  }
+ if ((txGetPixel(ball->x, ball->y) == TX_BLACK) && (ball->active == true))
+    {
+        Ball_Delete (ball);
 
-  if (*cue_change == true)
-  {
+        if (cue1->active == true)
+        {
 
-   *last_active_cue == 1? cue1->active = true : cue2->active = true;
-   *cue_change = false;
-   *last_active_cue = 0;
+          score->player1 ++;
+        }
 
-  }
+        else if (cue2->active == true)
+             {
 
+               score->player2 ++;
+             }
 
+    cue1->active = !cue1->active;
+    cue2->active = !cue2->active;
+
+    }
+
+//  if  ((ball->vx == 0) && (ball->vy == 0))
+//        *cue_change = true;
 
 }
+//-----------------------------------------------------
+void Cue_Change(cues *cue1, cues *cue2)
+{
+   cue1->active = !cue1->active;
+   cue2->active = !cue2->active;
+   printf("%d  %d  %d  %d\n", cue1->number, cue1->active, cue2->number, cue2->active);
+}
+
