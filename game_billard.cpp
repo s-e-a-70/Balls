@@ -57,15 +57,17 @@ void Draw_Cue(cues cue, int t);
 void Move_Cue(cues *cue);
 void Control_Cue(cues *cue, balls *ball);
 void Draw_Ball(balls ball);
-void Control_ball(balls *ball);
+void Control_Ball(balls *ball, bool *cue_change);
 void Physics_Ball(balls *ball, int dt);
-bool Is_Cue_Hit (cues *cue, balls *ball, int eps);
 bool IsLine(int x1, int y1, int x2, int y2, int x3, int y3);
-void Cue_Hit(balls *ball, cues *cue);
+void Cue_Hit(balls *ball, cues *cue);bool Is_Cue_Hit (cues *cue, balls *ball, int eps);
+
 void Cue_Init(cues *cue, int number, bool active);
 void Ball_Init(balls *ball, double vx, double vy, int r, COLORREF border_color, COLORREF fill_color, bool active);
 void Ball_Delete (balls *ball);
 void Draw_Score(scores score);
+void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change, int *last_active_cue);
+
 //-----------------------------------------------------
 int main()
 {
@@ -92,7 +94,8 @@ void Came_Billard()
 
     int dt = 1;
     int t  = 0;
-    int last_active_cue;
+    int last_active_cue = 0;
+    bool cue_change = false;
 
     score.player1 = 0;
     score.player2 = 0;
@@ -109,7 +112,7 @@ void Came_Billard()
         Draw_Landscape();
 
         Draw_Ball   (ball1);
-        Control_ball(&ball1);
+        Control_Ball(&ball1, &cue_change);
 
         Draw_Cue    (cue1, t);
         Control_Cue (&cue1, &ball1);
@@ -122,6 +125,9 @@ void Came_Billard()
 
 
         Physics_Ball(&ball1, dt);
+
+        Control_Game(&ball1, &cue1, &cue2, &score, &cue_change, &last_active_cue);
+
         t += dt;
 
         txSleep (100);
@@ -172,7 +178,7 @@ void Draw_Landscape(void)
 
 }
 //-----------------------------------------------------
-void Control_ball(balls *ball)
+void Control_Ball(balls *ball, bool *cue_change)
 {
     if (txGetAsyncKeyState (VK_F1))
         Ball_Init(ball, 0,   0,   20,  TX_WHITE, TX_WHITE, true);
@@ -180,7 +186,13 @@ void Control_ball(balls *ball)
   //  if  (((ball->x >= 150 && ball->x <= 180)||(ball->x >= 500 && ball->x <= 530)||(ball->x >= 850 && ball->x <= 880))&&((ball->y >= 150 && ball->y <= 180)||(ball->y >= 650 && ball->y <= 680)))
 
     if (txGetPixel(ball->x, ball->y) == TX_BLACK)
+    {
         ball->active = false;
+        *cue_change = true;
+    }
+
+    if  ((ball->vx == 0) && (ball->vy == 0))
+        *cue_change = true;
 
 
 
@@ -410,6 +422,25 @@ void Draw_Score(scores score)
 
 }
 //-----------------------------------------------------
+void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change, int *last_active_cue)
+{
+  if (ball->active == 0)
+  {
+     Ball_Delete (ball);
+    *last_active_cue == 1? score->player1 ++ :score->player2 ++;
+    *last_active_cue = 0;
+
+  }
+
+  if (*cue_change == true)
+  {
+
+   *last_active_cue == 1? cue1->active = true : cue2->active = true;
+   *cue_change = false;
+   *last_active_cue = 0;
+
+  }
 
 
 
+}
