@@ -207,8 +207,8 @@ void Move_Cue(cues *cue)
         if (txGetAsyncKeyState (cue->control.key_turn_right)) (cue->angle)  += 10;
         if (txGetAsyncKeyState (cue->control.key_turn_left))  (cue->angle)  -= 10;
 
-        cue->x2 = cue->x1 + (int)(cue->length * cos(cue->angle * pi / 180));
-        cue->y2 = cue->y1 + (int)(cue->length * sin(cue->angle * pi / 180));
+        cue->x2 = cue->x1 + (int)(cue->length * cos(cue->angle * txPI / 180));
+        cue->y2 = cue->y1 + (int)(cue->length * sin(cue->angle * txPI / 180));
 
 
     }
@@ -388,6 +388,21 @@ void Ball_Init (balls *ball, double vx, double vy, int r, COLORREF border_color,
 //-----------------------------------------------------
 void Ball_Delete (balls *ball)
 {
+   int t = 0;
+   HDC bang = txLoadImage("bang.bmp");
+
+    int sizeX = txGetExtentX(bang)/6;
+    int sizeY = txGetExtentY(bang);
+    int startX = ball->x - 10;
+    int startY = ball->y - 10;
+
+    while (t <= 10)
+    {
+        txTransparentBlt(txDC(), startX, startY, sizeX, 0, bang, (t % 6) * sizeX, 0);
+         t++;
+         txSleep(100);
+    }
+
    ball->x  = 0;
    ball->y  = 0;
    ball->vx = 0;
@@ -404,6 +419,8 @@ void Ball_Delete (balls *ball)
 
     //ball->border_color = TX_BLACK;
     //ball->fill_color   = TX_BLACK;
+
+txDeleteDC(bang);
 
 }
 //-----------------------------------------------------
@@ -455,4 +472,3 @@ void Cue_Change(cues *cue1, cues *cue2)
    cue2->active = !cue2->active;
    printf("%d  %d  %d  %d\n", cue1->number, cue1->active, cue2->number, cue2->active);
 }
-
