@@ -46,8 +46,16 @@ struct scores
     int player2;
 };
 
-
-
+struct buttons
+{
+    int x;
+    int y;
+    int lx;
+    int ly;
+    COLORREF border_color;
+    COLORREF fill_color;
+    char *s;
+};
 
 
 void Came_Billard();
@@ -56,17 +64,26 @@ void Draw_Cue(cues cue, int t);
 void Move_Cue(cues *cue);
 void Control_Cue(cues *cue, balls *ball);
 void Draw_Ball(balls ball);
-void Control_Ball(balls *ball);
+void Control_Balls (balls *ball1, balls *ball2);
 void Physics_Ball(balls *ball, int dt);
-bool IsLine(int x1, int y1, int x2, int y2, int x3, int y3);
+bool Is_Line(int x1, int y1, int x2, int y2, int x3, int y3);
 void Cue_Hit(balls *ball, cues *cue);bool Is_Cue_Hit (cues *cue, balls *ball, int eps);
 
 void Cue_Init(cues *cue, int number, bool active);
 void Ball_Init(balls *ball, double vx, double vy, int r, COLORREF border_color, COLORREF fill_color, bool active);
 void Ball_Delete (balls *ball);
 void Draw_Score(scores score);
-void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change);
-void Cue_Change(cues *cue1, cues *cue2);
+void Control_Game(balls *ball1, balls *ball2, cues *cue1, cues *cue2, scores *score);
+bool Is_Ball_In_Pocket(balls *ball, cues *cue1, cues *cue2, scores *score);
+bool Is_Collision (balls *ball1, balls *ball2);
+balls To_New_SK (balls ball, float fi);
+float Angle (float x1, float y1, float x2, float y2);
+balls To_Old_SK (balls ball, float fi);
+void Control_Button(balls *ball1, balls *ball2);
+void Button_Init (buttons *button, int x, int y, int lx, int ly, COLORREF border_color, COLORREF fill_color, char *s);
+void Draw_Button(buttons button);
+
+
 
 //-----------------------------------------------------
 int main()
@@ -78,23 +95,30 @@ int main()
 
     return(0);
 }
-
+//-----------------------------------------------------
 void Came_Billard()
 {
 
     balls ball1;
+    balls ball2;
     cues  cue1;
     cues  cue2;
     scores score;
+
+    buttons button_F1;
+    buttons button_ESC;
 
     Cue_Init (&cue1, 1, true);
     Cue_Init (&cue2, 2, false);
 
     Ball_Init(&ball1, 0, 0, 20,  TX_WHITE, TX_WHITE, true);
+    Ball_Init(&ball2, 0, 0, 20,  TX_WHITE, TX_WHITE, true);
+
+    Button_Init(&button_F1, 100, 720, 150, 50, TX_WHITE, TX_RED, "F1 - NewGame");
+    Button_Init(&button_ESC, 800, 720, 150, 50, TX_WHITE, TX_RED, "ESC - Exit");
 
     int dt = 1;
     int t  = 0;
-    bool cue_change = false;
 
     score.player1 = 0;
     score.player2 = 0;
@@ -106,35 +130,37 @@ void Came_Billard()
 
         txClear();
 
+        Draw_Landscape ();
 
+        Draw_Button (button_F1);
+        Draw_Button (button_ESC);
 
-        Draw_Landscape();
-
-        Draw_Ball   (ball1);
-        Control_Ball(&ball1);
-
+        Draw_Ball     (ball1);
+        Draw_Ball     (ball2);
+        Control_Balls (&ball1, &ball2);
 
         Draw_Cue    (cue1, t);
         Move_Cue    (&cue1);
         Control_Cue (&cue1, &ball1);
-
-
-
+        Control_Cue (&cue1, &ball2);
 
         Draw_Cue    (cue2, t);
         Move_Cue    (&cue2);
         Control_Cue (&cue2, &ball1);
-
-
-
+        Control_Cue (&cue2, &ball2);
 
         Physics_Ball(&ball1, dt);
+        Physics_Ball(&ball2, dt);
 
-        Control_Game(&ball1, &cue1, &cue2, &score, &cue_change);
+        Control_Game(&ball1, &ball2, &cue1, &cue2, &score);
+
+        Control_Button(&ball1, &ball2);
+
+        Draw_Score(score);
 
         t += dt;
 
-         Draw_Score(score);
+
 
         txSleep (100);
 
@@ -187,14 +213,52 @@ void Draw_Landscape(void)
 
 }
 //-----------------------------------------------------
-void Control_Ball(balls *ball)
+void Control_Balls(balls *ball1, balls *ball2)
 {
-    if (txGetAsyncKeyState (VK_F1))
-        Ball_Init(ball, 0,   0,   20,  TX_WHITE, TX_WHITE, true);
+
+    if (Is_Collision(ball1, ball2))
+    {
+
+       txMessageBox("Hooray","Collision",MB_OK);
+
+       balls newball1;
+       balls newball2;
+
+       float x = ball2->vx - ball1->vx;
+       float y = ball2->vy - ball1->vy;
+
+
+       float fi = Angle (1.0, 0.0, x, y);
+       newball1 = To_New_SK (*ball1, fi);
+       newball2 = To_New_SK (*ball2, fi);
+
+
+       printf("%f  %f  %f  %f\n", ball1->vx, ball1->vy, ball2->vx, ball2->vy);
+
+
+       float psi = Angle (1.0, 0.0, newball1.vx, newball1.vy);
+       float v1x = newball1.vx * cos(psi);
+       float v1y = newball1.vx * sin(psi);
+
+       psi = Angle (1.0, 0.0, newball2.vx, newball2.vy);
+       float v2x = newball1.vx * cos(psi);
+       float v2y = newball1.vx * sin(psi);
+
+       newball1.vx = v2x;
+       newball1.vy = v2y;
+
+       newball2.vx = v1x;
+       newball2.vy = v1y;
+
+       *ball1 = To_Old_SK (newball1, fi);
+       *ball2 = To_Old_SK (newball2, fi);
+
+
+   }
 
 
 }
-        //-----------------------------------------------------
+//-----------------------------------------------------
 void Move_Cue(cues *cue)
 {
     if (cue->active)
@@ -301,18 +365,17 @@ bool Is_Cue_Hit (cues *cue, balls *ball, int eps)
 
     int distance = (int)sqrt((ball->x - cue->x2) * (ball->x - cue->x2) + (ball->y - cue->y2) * (ball->y - cue->y2)) - ball->r;
 
-    if ((distance <= eps) && IsLine(cue->x1, cue->y1, cue->x2, cue->y2, ball->x, ball->y))
+    if ((distance <= eps) && Is_Line(cue->x1, cue->y1, cue->x2, cue->y2, ball->x, ball->y))
         hit = true;
 
     return hit;
 
 }
 //-----------------------------------------------------
-bool IsLine(int x1, int y1, int x2, int y2, int x3, int y3)
+bool Is_Line(int x1, int y1, int x2, int y2, int x3, int y3)
 {
 
    if ((x3 - x1) / (x2 - x1) == (y3 - y1) / (y2 - y1))
-    //if ((x3 - x1) * (y2 - y1) == (x2 - x1) * (y3 - y1))
         return true;
    else return false;
 
@@ -388,20 +451,20 @@ void Ball_Init (balls *ball, double vx, double vy, int r, COLORREF border_color,
 //-----------------------------------------------------
 void Ball_Delete (balls *ball)
 {
-   int t = 0;
+   /*int t = 0;
    HDC bang = txLoadImage("bang.bmp");
 
-    int sizeX = txGetExtentX(bang)/6;
-    int sizeY = txGetExtentY(bang);
-    int startX = ball->x - 10;
-    int startY = ball->y - 10;
+   int sizeX = txGetExtentX(bang)/6;
+   int sizeY = txGetExtentY(bang);
+   int startX = ball->x - 10;
+   int startY = ball->y - 10;
 
     while (t <= 10)
     {
         txTransparentBlt(txDC(), startX, startY, sizeX, 0, bang, (t % 6) * sizeX, 0);
          t++;
          txSleep(100);
-    }
+    } */
 
    ball->x  = 0;
    ball->y  = 0;
@@ -410,23 +473,14 @@ void Ball_Delete (balls *ball)
    ball->r  = 0;
    ball->active = false;
 
-  // while (ball->r >= 0)
-   //{
-   //     ball->r -= 1;
-   //     Draw_Ball(ball);
-   //     txSleep (100);
-   //}
-
-    //ball->border_color = TX_BLACK;
-    //ball->fill_color   = TX_BLACK;
-
-txDeleteDC(bang);
+//    txDeleteDC(bang);
 
 }
 //-----------------------------------------------------
 void Draw_Score(scores score)
 {
     char s[50];
+
     sprintf(s, "%d : %d\n", score.player1, score.player2);
 
     txSetColor      (TX_WHITE);
@@ -437,11 +491,27 @@ void Draw_Score(scores score)
 
 }
 //-----------------------------------------------------
-void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_change)
+void Control_Game(balls *ball1, balls *ball2, cues *cue1, cues *cue2, scores *score)
 {
 
- if ((txGetPixel(ball->x, ball->y) == TX_BLACK) && (ball->active == true))
+    if (Is_Ball_In_Pocket(ball1, cue1, cue2, score) || Is_Ball_In_Pocket(ball2, cue1, cue2, score))
     {
+
+        cue1->active = !cue1->active;
+        cue2->active = !cue2->active;
+
+    }
+
+}
+//-----------------------------------------------------
+
+bool Is_Ball_In_Pocket(balls *ball, cues *cue1, cues *cue2, scores *score)
+{
+    bool res = false;
+
+    if ((txGetPixel(ball->x, ball->y) == TX_BLACK) && (ball->active == true))
+    {
+
         Ball_Delete (ball);
 
         if (cue1->active == true)
@@ -456,19 +526,91 @@ void Control_Game(balls *ball, cues *cue1, cues *cue2, scores *score, bool *cue_
                score->player2 ++;
              }
 
-    cue1->active = !cue1->active;
-    cue2->active = !cue2->active;
+        res = true;
 
-    }
+     }
 
-//  if  ((ball->vx == 0) && (ball->vy == 0))
-//        *cue_change = true;
+     return res;
 
 }
 //-----------------------------------------------------
-void Cue_Change(cues *cue1, cues *cue2)
+bool Is_Collision (balls *ball1, balls *ball2)
 {
-   cue1->active = !cue1->active;
-   cue2->active = !cue2->active;
-   printf("%d  %d  %d  %d\n", cue1->number, cue1->active, cue2->number, cue2->active);
+
+    bool res = false;
+
+    float distance = sqrt((ball1->x - ball2->x) * (ball1->x - ball2->x) + (ball1->y - ball2->y) * (ball1->y - ball2->y));
+
+    if ((ROUND (distance) <= 2 * ball1->r) && (ball1->active == true) && (ball2->active == true))
+        res = true;
+
+    return res;
+
 }
+//-----------------------------------------------------
+float Angle (float x1, float y1, float x2, float y2)
+{
+
+    return acos((x1 * x2 + y1 * y2)/(sqrt(x1 * x1 + y1 * y1) * sqrt(x2 * x2 + y2 * y2)));
+
+}
+//-----------------------------------------------------
+balls To_New_SK (balls ball, float fi)
+{
+    balls newball;
+
+    newball.x = ball.x  * cos(fi) - ball.y * sin(fi);
+    newball.y = ball.x  * sin(fi) + ball.y * cos(fi);
+
+    return newball;
+
+}
+//-----------------------------------------------------
+balls To_Old_SK (balls ball, float fi)
+{
+    balls newball;
+
+    newball.x = ball.x  * cos(fi) + ball.y * sin(fi);
+    newball.y = -ball.x  * sin(fi) + ball.y * cos(fi);
+
+    return newball;
+
+}
+//-----------------------------------------------------
+void Draw_Button(buttons button)
+{
+ txSetColor     (button.border_color, 2);
+ txSetFillColor (button.fill_color);
+
+ txRectangle    (button.x, button.y, button.x + button.lx, button.y + button.ly);
+
+ txSelectFont   ("Times New Roman", 20, 0, FW_BOLD);
+ txDrawText     (button.x, button.y, button.x + button.lx, button.y + button.ly, button.s);
+
+}
+//-----------------------------------------------------
+void Button_Init (buttons *button, int x, int y, int lx, int ly, COLORREF border_color, COLORREF fill_color, char *s)
+{
+
+    button->x  = x;
+    button->y  = y;
+    button->lx = lx;
+    button->ly = ly;
+    button->border_color = border_color;
+    button->fill_color   = fill_color;
+    button->s = s;
+
+}
+//-----------------------------------------------------
+void Control_Button(balls *ball1, balls *ball2)
+{
+
+    if (txGetAsyncKeyState (VK_F1))
+    {
+        Ball_Init(ball1, 0,   0,   20,  TX_WHITE, TX_WHITE, true);
+        Ball_Init(ball2, 0,   0,   20,  TX_WHITE, TX_WHITE, true);
+    }
+
+}
+//-----------------------------------------------------
+
